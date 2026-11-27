@@ -1,0 +1,6 @@
+{
+  "name": "SG Haze Watch",
+  "description": "Live Singapore PSI and PM2.5 regional air quality tracker monitoring North, South, East, West, and Central Singapore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
