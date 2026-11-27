@@ -9,7 +9,7 @@ interface TrendChartProps {
   onSelectRegion: (regionId: RegionId) => void;
 }
 
-type TrendMetric = 'psi24h' | 'pm25_1h';
+type TrendMetric = 'psi24h' | 'pm25_24h';
 
 export function TrendChart({
   hourlyHistory,
@@ -32,11 +32,11 @@ export function TrendChart({
   const allValues = hourlyHistory.flatMap((pt) =>
     REGION_ORDER.map((r) => pt[metric][r]),
   );
-  const maxDataVal = Math.max(...allValues, metric === 'psi24h' ? 70 : 30);
+  const maxDataVal = Math.max(...allValues, metric === 'psi24h' ? 60 : 25);
   const yMax =
     metric === 'psi24h'
       ? Math.max(100, Math.ceil((maxDataVal + 20) / 50) * 50)
-      : Math.max(60, Math.ceil((maxDataVal + 15) / 25) * 25);
+      : Math.max(40, Math.ceil((maxDataVal + 10) / 20) * 20);
 
   const getX = (idx: number) =>
     padLeft + (idx / Math.max(1, hourlyHistory.length - 1)) * plotWidth;
@@ -51,11 +51,14 @@ export function TrendChart({
           { val: 200, label: '200 Unhealthy', color: '#D97706' },
         ].filter((t) => t.val <= yMax)
       : [
-          { val: 55, label: '55 Elevated', color: '#D97706' },
-          { val: 150, label: '150 High', color: '#EA580C' },
+          { val: 35, label: '35 Moderate', color: '#0284C7' },
+          { val: 75, label: '75 Elevated', color: '#D97706' },
         ].filter((t) => t.val <= yMax);
 
-  const activeIdx = hoverIndex ?? hourlyHistory.length - 1;
+  const activeIdx = Math.min(
+    hoverIndex ?? hourlyHistory.length - 1,
+    Math.max(0, hourlyHistory.length - 1),
+  );
   const activePoint = hourlyHistory[activeIdx];
 
   const visibleRegions = focusSelectedOnly ? [selectedRegion] : REGION_ORDER;
@@ -112,14 +115,14 @@ export function TrendChart({
             </button>
             <button
               type="button"
-              onClick={() => setMetric('pm25_1h')}
+              onClick={() => setMetric('pm25_24h')}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                metric === 'pm25_1h'
+                metric === 'pm25_24h'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              1h PM2.5
+              24h PM2.5
             </button>
           </div>
         </div>
@@ -231,7 +234,7 @@ export function TrendChart({
             );
           })}
 
-          {/* X-axis timestamps (every 3 hours) */}
+          {/* X-axis timestamps */}
           {hourlyHistory.map((pt, idx) => {
             if (idx % 3 !== 0 && idx !== hourlyHistory.length - 1) return null;
             const x = getX(idx);
@@ -249,15 +252,17 @@ export function TrendChart({
           })}
 
           {/* Vertical Hairline Crosshair */}
-          <line
-            x1={getX(activeIdx)}
-            y1={padTop}
-            x2={getX(activeIdx)}
-            y2={padTop + plotHeight}
-            stroke="#94A3B8"
-            strokeWidth="1"
-            strokeDasharray="3 3"
-          />
+          {hourlyHistory.length > 0 && (
+            <line
+              x1={getX(activeIdx)}
+              y1={padTop}
+              x2={getX(activeIdx)}
+              y2={padTop + plotHeight}
+              stroke="#94A3B8"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+            />
+          )}
 
           {/* Region Curves */}
           {visibleRegions.map((regionId) => {

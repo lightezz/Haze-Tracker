@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import {
-  DATA_GOV_SG_PM25_ENDPOINT,
+  checkApiHealth,
   DATA_GOV_SG_PSI_ENDPOINT,
 } from '../services/psiService';
 
@@ -9,7 +10,42 @@ interface ApiIntegrationModalProps {
   onClose: () => void;
 }
 
+interface HealthState {
+  loading: boolean;
+  ok?: boolean;
+  upstreamReachable?: boolean;
+  timestamp?: string;
+  error?: string;
+}
+
 export function ApiIntegrationModal({ open, onClose }: ApiIntegrationModalProps) {
+  const [health, setHealth] = useState<HealthState>({ loading: false });
+
+  const runHealthCheck = async () => {
+    setHealth({ loading: true });
+    try {
+      const res = await checkApiHealth();
+      setHealth({
+        loading: false,
+        ok: res.ok,
+        upstreamReachable: res.upstreamReachable,
+        timestamp: res.timestamp,
+      });
+    } catch (err) {
+      setHealth({
+        loading: false,
+        ok: false,
+        error: err instanceof Error ? err.message : 'Health check failed',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      void runHealthCheck();
+    }
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -26,7 +62,7 @@ export function ApiIntegrationModal({ open, onClose }: ApiIntegrationModalProps)
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h2 id="api-modal-title" className="font-display text-base font-semibold text-slate-900">
-            API Integration Readiness
+            Serverless API Connection
           </h2>
           <button
             type="button"
@@ -40,40 +76,52 @@ export function ApiIntegrationModal({ open, onClose }: ApiIntegrationModalProps)
 
         <div className="space-y-4 px-6 py-5 text-sm text-slate-600">
           <p className="leading-relaxed">
-            This front-end uses a modular data adapter in{' '}
+            Live readings are fetched server-side through the root{' '}
             <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-900">
-              src/services/psiService.ts
+              /api
             </code>{' '}
-            that maps directly onto Singapore&apos;s official NEA / data.gov.sg v2 real-time endpoints.
+            serverless endpoints, pulling real-time PSI and 24-hour regional history from{' '}
+            <span className="font-medium text-slate-900">data.gov.sg</span>.
           </p>
 
-          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs">
+          <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs">
             <div>
-              <span className="font-semibold text-slate-800">24-hr PSI &amp; Sub-Indices:</span>
+              <span className="font-semibold text-slate-800">Upstream Source:</span>
               <div className="mt-1 font-mono text-slate-700 break-all">
                 GET {DATA_GOV_SG_PSI_ENDPOINT}
               </div>
             </div>
             <div className="pt-2 border-t border-slate-200/80">
-              <span className="font-semibold text-slate-800">1-hr PM2.5 Concentrations:</span>
-              <div className="mt-1 font-mono text-slate-700 break-all">
-                GET {DATA_GOV_SG_PM25_ENDPOINT}
+              <span className="font-semibold text-slate-800">Serverless Routes:</span>
+              <div className="mt-1 space-y-1 font-mono text-slate-700">
+                <div>GET /api/psi &rarr; /api/psi.ts</div>
+                <div>GET /api/health &rarr; /api/health.ts</div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-1.5 text-xs text-slate-600">
-            <p className="font-semibold text-slate-800">Mapping Contract</p>
-            <p className="leading-relaxed">
-              Update <code className="font-mono text-slate-800">fetchSingaporePsi()</code> to
-              transform <code className="font-mono text-slate-800">data.items[0].readings</code>{' '}
-              across <code className="font-mono text-slate-800">north</code>,{' '}
-              <code className="font-mono text-slate-800">south</code>,{' '}
-              <code className="font-mono text-slate-800">east</code>,{' '}
-              <code className="font-mono text-slate-800">west</code>, and{' '}
-              <code className="font-mono text-slate-800">central</code> into the{' '}
-              <code className="font-mono text-slate-800">SingaporePsiSnapshot</code> shape.
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs">
+            <div className="space-y-0.5">
+              <div className="font-semibold text-slate-800">Endpoint Health Verification</div>
+              {health.loading ? (
+                <div className="text-slate-500">Checking /api/health and upstream data.gov.sg...</div>
+              ) : health.error ? (
+                <div className="text-rose-700">{health.error}</div>
+              ) : health.ok ? (
+                <div className="text-emerald-700">
+                  ● API Healthy · Upstream data.gov.sg{' '}
+                  {health.upstreamReachable ? 'Reachable' : 'Unreachable'}
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => void runHealthCheck()}
+              disabled={health.loading}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60 transition-colors cursor-pointer"
+            >
+              Verify Health
+            </button>
           </div>
         </div>
 

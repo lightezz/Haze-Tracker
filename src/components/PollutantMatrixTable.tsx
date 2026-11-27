@@ -12,7 +12,7 @@ interface PollutantMatrixTableProps {
 type SortKey =
   | 'regionName'
   | 'psi24h'
-  | 'pm25_1h'
+  | 'pm25SubIndex'
   | 'pm25_24h'
   | 'pm10_24h'
   | 'o3SubIndex'
@@ -26,6 +26,10 @@ export function PollutantMatrixTable({
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('psi24h');
   const [sortDesc, setSortDesc] = useState(true);
+
+  const hasHourlyPm25 = Object.values(snapshot.regions).some(
+    (r) => r.pm25_1h !== null,
+  );
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -64,7 +68,7 @@ export function PollutantMatrixTable({
       'Planning Areas',
       '24h PSI',
       'NEA Band',
-      '1h PM2.5 (ug/m3)',
+      ...(hasHourlyPm25 ? ['1h PM2.5 (ug/m3)'] : ['PM2.5 Sub-Index']),
       '24h PM2.5 (ug/m3)',
       '24h PM10 (ug/m3)',
       'O3 Sub-Index',
@@ -78,7 +82,7 @@ export function PollutantMatrixTable({
       `"${r.planningAreas.join(', ')}"`,
       r.psi24h,
       getPsiBand(r.psi24h).label,
-      r.pm25_1h,
+      hasHourlyPm25 ? (r.pm25_1h ?? '') : r.pm25SubIndex,
       r.pm25_24h,
       r.pm10_24h,
       r.o3SubIndex,
@@ -170,20 +174,20 @@ export function PollutantMatrixTable({
               <th className="px-4 py-3 text-right">
                 <button
                   type="button"
-                  onClick={() => handleSort('pm25_1h')}
+                  onClick={() => handleSort('pm25_24h')}
                   className="inline-flex items-center gap-1 hover:text-slate-900 cursor-pointer"
                 >
-                  1h PM2.5
+                  24h PM2.5
                   <ArrowUpDown aria-hidden="true" className="h-3 w-3" />
                 </button>
               </th>
               <th className="px-4 py-3 text-right">
                 <button
                   type="button"
-                  onClick={() => handleSort('pm25_24h')}
+                  onClick={() => handleSort('pm25SubIndex')}
                   className="inline-flex items-center gap-1 hover:text-slate-900 cursor-pointer"
                 >
-                  24h PM2.5
+                  {hasHourlyPm25 ? '1h PM2.5' : 'PM2.5 Index'}
                   <ArrowUpDown aria-hidden="true" className="h-3 w-3" />
                 </button>
               </th>
@@ -259,10 +263,12 @@ export function PollutantMatrixTable({
                       {band.symbol} {band.label}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-slate-800 tabular-nums">
-                      {r.pm25_1h} <span className="text-slate-400">µg/m³</span>
+                      {r.pm25_24h} <span className="text-slate-400">µg/m³</span>
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-slate-700 tabular-nums">
-                      {r.pm25_24h}
+                      {hasHourlyPm25 && r.pm25_1h !== null
+                        ? `${r.pm25_1h} µg/m³`
+                        : r.pm25SubIndex}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-slate-700 tabular-nums">
                       {r.pm10_24h}

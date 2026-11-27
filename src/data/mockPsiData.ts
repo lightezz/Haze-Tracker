@@ -43,9 +43,10 @@ export const SINGAPORE_REGION_META: Record<RegionId, RegionMeta> = {
 
 function buildHourlyHistory(
   bases: Record<RegionId, number>,
+  pm25_24hBases: Record<RegionId, number>,
   pm25Bases: Record<RegionId, number>,
   curveOffsets: number[],
-  pm25Offsets: number[],
+  pmOffsetCurve: number[],
 ): HourlyDataPoint[] {
   const now = new Date();
   const points: HourlyDataPoint[] = [];
@@ -58,7 +59,7 @@ function buildHourlyHistory(
     const hourLabel = `${hourNum.toString().padStart(2, '0')}:00`;
 
     const offset = curveOffsets[idx] ?? 0;
-    const pmOffset = pm25Offsets[idx] ?? 0;
+    const pmOffset = pmOffsetCurve[idx] ?? 0;
 
     points.push({
       hourLabel,
@@ -69,6 +70,13 @@ function buildHourlyHistory(
         east: Math.max(12, Math.round(bases.east + offset * 0.88)),
         west: Math.max(12, Math.round(bases.west + offset * 1.12)),
         central: Math.max(12, Math.round(bases.central + offset)),
+      },
+      pm25_24h: {
+        north: Math.max(4, Math.round(pm25_24hBases.north + pmOffset * 0.45)),
+        south: Math.max(4, Math.round(pm25_24hBases.south + pmOffset * 0.5)),
+        east: Math.max(4, Math.round(pm25_24hBases.east + pmOffset * 0.42)),
+        west: Math.max(4, Math.round(pm25_24hBases.west + pmOffset * 0.55)),
+        central: Math.max(4, Math.round(pm25_24hBases.central + pmOffset * 0.48)),
       },
       pm25_1h: {
         north: Math.max(4, Math.round(pm25Bases.north + pmOffset * 0.9)),
@@ -103,6 +111,7 @@ function makeRegion(
     psi24h,
     pm25_24h,
     pm25_1h,
+    pm25SubIndex: psi24h,
     pm10_24h,
     o3SubIndex,
     so2SubIndex,
@@ -113,13 +122,15 @@ function makeRegion(
 }
 
 export const SCENARIO_OPTIONS: Array<{ id: ScenarioId; label: string }> = [
-  { id: 'baseline', label: 'Clear Baseline' },
-  { id: 'mild_haze', label: 'Moderate Plume' },
-  { id: 'elevated_haze', label: 'Unhealthy Episode' },
-  { id: 'severe_haze', label: 'Severe Haze' },
+  { id: 'live', label: 'Live NEA API' },
+  { id: 'mild_haze', label: 'Moderate Drill' },
+  { id: 'elevated_haze', label: 'Unhealthy Drill' },
+  { id: 'severe_haze', label: 'Severe Drill' },
 ];
 
-export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnapshot {
+export function createScenarioSnapshot(
+  scenarioId: Exclude<ScenarioId, 'live'>,
+): SingaporePsiSnapshot {
   const now = new Date();
   now.setMinutes(0, 0, 0);
   const formattedTime = now.toLocaleTimeString('en-SG', {
@@ -146,7 +157,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
     const values = Object.values(regions).map((r) => r.psi24h);
     return {
       scenarioId,
-      scenarioLabel: 'Moderate Transboundary Plume',
+      scenarioLabel: 'Moderate Transboundary Plume (Simulation)',
       updatedTimestampIso: now.toISOString(),
       updatedDisplayTime: `${formattedDate}, ${formattedTime} SGT`,
       sourceMode: 'preview',
@@ -165,6 +176,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
       regions,
       hourlyHistory: buildHourlyHistory(
         { west: 86, south: 81, central: 78, north: 74, east: 69 },
+        { west: 29, south: 26, central: 25, north: 23, east: 21 },
         { west: 38, south: 33, central: 31, north: 28, east: 24 },
         curve,
         pmCurve,
@@ -185,7 +197,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
     const values = Object.values(regions).map((r) => r.psi24h);
     return {
       scenarioId,
-      scenarioLabel: 'Unhealthy Haze Episode',
+      scenarioLabel: 'Unhealthy Haze Episode (Simulation)',
       updatedTimestampIso: now.toISOString(),
       updatedDisplayTime: `${formattedDate}, ${formattedTime} SGT`,
       sourceMode: 'preview',
@@ -204,6 +216,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
       regions,
       hourlyHistory: buildHourlyHistory(
         { west: 142, south: 131, central: 124, north: 116, east: 108 },
+        { west: 68, south: 61, central: 57, north: 52, east: 47 },
         { west: 94, south: 86, central: 79, north: 71, east: 62 },
         curve,
         pmCurve,
@@ -224,7 +237,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
     const values = Object.values(regions).map((r) => r.psi24h);
     return {
       scenarioId,
-      scenarioLabel: 'Severe Haze Alert',
+      scenarioLabel: 'Severe Haze Alert (Simulation)',
       updatedTimestampIso: now.toISOString(),
       updatedDisplayTime: `${formattedDate}, ${formattedTime} SGT`,
       sourceMode: 'preview',
@@ -243,6 +256,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
       regions,
       hourlyHistory: buildHourlyHistory(
         { west: 238, south: 221, central: 209, north: 194, east: 182 },
+        { west: 146, south: 134, central: 126, north: 114, east: 104 },
         { west: 198, south: 179, central: 164, north: 148, east: 132 },
         curve,
         pmCurve,
@@ -250,7 +264,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
     };
   }
 
-  // Default: Clear Baseline
+  // Fallback baseline
   const regions: Record<RegionId, RegionalReading> = {
     central: makeRegion('central', 44, 12, 14, 24, 34, 7, 5, 19, -1),
     north: makeRegion('north', 42, 11, 13, 22, 32, 6, 5, 17, 0),
@@ -282,6 +296,7 @@ export function createScenarioSnapshot(scenarioId: ScenarioId): SingaporePsiSnap
     regions,
     hourlyHistory: buildHourlyHistory(
       { central: 44, north: 42, south: 47, east: 39, west: 51 },
+      { central: 12, north: 11, south: 13, east: 10, west: 15 },
       { central: 14, north: 13, south: 16, east: 11, west: 18 },
       curve,
       pmCurve,

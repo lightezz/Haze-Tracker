@@ -10,6 +10,7 @@ export type PsiBandKey =
 export type Pm25HourlyBandKey = 'normal' | 'elevated' | 'high' | 'very_high';
 
 export type ScenarioId =
+  | 'live'
   | 'baseline'
   | 'mild_haze'
   | 'elevated_haze'
@@ -18,7 +19,8 @@ export type ScenarioId =
 export interface PollutantReadings {
   psi24h: number;
   pm25_24h: number;
-  pm25_1h: number;
+  pm25_1h: number | null;
+  pm25SubIndex: number;
   pm10_24h: number;
   o3SubIndex: number;
   so2SubIndex: number;
@@ -41,7 +43,8 @@ export interface HourlyDataPoint {
   hourLabel: string;
   timestampIso: string;
   psi24h: Record<RegionId, number>;
-  pm25_1h: Record<RegionId, number>;
+  pm25_24h: Record<RegionId, number>;
+  pm25_1h: Record<RegionId, number | null>;
 }
 
 export interface WindTelemetry {
@@ -63,7 +66,7 @@ export interface SingaporePsiSnapshot {
     max: number;
     dominantBand: PsiBandKey;
   };
-  wind: WindTelemetry;
+  wind: WindTelemetry | null;
   regions: Record<RegionId, RegionalReading>;
   hourlyHistory: HourlyDataPoint[];
 }

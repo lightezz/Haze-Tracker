@@ -7,8 +7,8 @@ import {
 
 interface RegionInspectorProps {
   reading: RegionalReading;
-  monsoonPhase: string;
-  visibilityKm: number;
+  monsoonPhase: string | null;
+  visibilityKm: number | null;
 }
 
 interface SubIndexRow {
@@ -25,23 +25,33 @@ export function RegionInspector({
   visibilityKm,
 }: RegionInspectorProps) {
   const psiBand = getPsiBand(reading.psi24h);
-  const pm25Band = getPm25HourlyBand(reading.pm25_1h);
   const dominant = getDominantPollutant(reading);
 
   const subIndices: SubIndexRow[] = [
-    {
-      label: 'PM2.5 (1-hr)',
-      value: reading.pm25_1h,
-      unit: 'µg/m³',
-      maxScale: 250,
-      note: pm25Band.label,
-    },
+    ...(reading.pm25_1h !== null
+      ? [
+          {
+            label: 'PM2.5 (1-hr)',
+            value: reading.pm25_1h,
+            unit: 'µg/m³',
+            maxScale: 250,
+            note: getPm25HourlyBand(reading.pm25_1h).label,
+          },
+        ]
+      : []),
     {
       label: 'PM2.5 (24-hr)',
       value: reading.pm25_24h,
       unit: 'µg/m³',
-      maxScale: 200,
+      maxScale: 150,
       note: 'Fine particulate',
+    },
+    {
+      label: 'PM2.5 Sub-Index',
+      value: reading.pm25SubIndex,
+      unit: 'sub-index',
+      maxScale: 250,
+      note: 'NEA 24-hr index',
     },
     {
       label: 'PM10 (24-hr)',
@@ -122,9 +132,15 @@ export function RegionInspector({
               <span className="font-mono text-2xl font-bold text-slate-900">
                 {dominant}
               </span>
-              <span className="text-xs text-slate-500 tabular-nums">
-                Vis. {visibilityKm.toFixed(1)} km
-              </span>
+              {visibilityKm !== null ? (
+                <span className="text-xs text-slate-500 tabular-nums">
+                  Vis. {visibilityKm.toFixed(1)} km
+                </span>
+              ) : (
+                <span className="text-xs text-slate-500 tabular-nums">
+                  PM2.5 {reading.pm25_24h} µg/m³
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -133,12 +149,12 @@ export function RegionInspector({
         <div className="px-5 py-4">
           <div className="mb-3 flex items-center justify-between text-xs text-slate-500">
             <span className="font-medium text-slate-700">Pollutant Breakdown</span>
-            <span>{monsoonPhase}</span>
+            <span>{monsoonPhase ?? 'data.gov.sg /psi'}</span>
           </div>
 
           <div className="space-y-3">
             {subIndices.map((row) => {
-              const pct = Math.min(100, Math.max(4, Math.round((row.value / row.maxScale) * 100)));
+              const pct = Math.min(100, Math.max(3, Math.round((row.value / row.maxScale) * 100)));
               const barColor =
                 row.label.startsWith('PM2.5 (1-hr)')
                   ? getPm25HourlyBand(row.value).dotHex

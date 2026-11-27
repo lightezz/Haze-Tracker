@@ -8,14 +8,13 @@ interface SingaporeMapProps {
   onSelectRegion: (regionId: RegionId) => void;
 }
 
-type MapMetricMode = 'psi24h' | 'pm25_1h';
+type MapMetricMode = 'psi24h' | 'pm25';
 
 interface RegionGeometry {
   id: RegionId;
   path: string;
   markerX: number;
   markerY: number;
-  labelSubtitle: string;
 }
 
 const REGION_GEOMETRIES: RegionGeometry[] = [
@@ -24,35 +23,30 @@ const REGION_GEOMETRIES: RegionGeometry[] = [
     path: 'M 64,252 L 82,216 L 122,192 L 154,142 L 182,110 L 216,120 L 244,160 L 270,210 L 278,262 L 265,296 L 212,292 L 156,282 L 96,268 Z',
     markerX: 180,
     markerY: 215,
-    labelSubtitle: 'Jurong · Tuas',
   },
   {
     id: 'north',
     path: 'M 182,110 L 222,92 L 278,74 L 328,72 L 382,84 L 442,98 L 494,124 L 468,162 L 424,174 L 366,174 L 316,170 L 276,184 L 244,160 L 216,120 Z',
     markerX: 342,
     markerY: 125,
-    labelSubtitle: 'Woodlands · Yishun',
   },
   {
     id: 'central',
     path: 'M 244,160 L 276,184 L 316,170 L 366,174 L 424,174 L 468,162 L 478,205 L 472,248 L 440,268 L 382,268 L 326,262 L 278,262 L 270,210 Z',
     markerX: 374,
     markerY: 218,
-    labelSubtitle: 'Bishan · Orchard',
   },
   {
     id: 'south',
     path: 'M 265,296 L 278,262 L 326,262 L 382,268 L 440,268 L 472,248 L 494,274 L 456,294 L 418,312 L 368,322 L 318,312 Z',
     markerX: 376,
     markerY: 294,
-    labelSubtitle: 'Marina · Queenstown',
   },
   {
     id: 'east',
     path: 'M 468,162 L 494,124 L 548,136 L 604,154 L 664,176 L 678,196 L 642,228 L 584,254 L 522,266 L 494,274 L 472,248 L 478,205 Z',
     markerX: 568,
     markerY: 204,
-    labelSubtitle: 'Tampines · Changi',
   },
 ];
 
@@ -66,6 +60,7 @@ export function SingaporeMap({
 
   const activeRegion = hoveredRegion ?? selectedRegion;
   const activeReading = snapshot.regions[activeRegion];
+  const hasHourlyPm25 = activeReading.pm25_1h !== null;
 
   return (
     <div className="flex flex-col rounded-xl border border-slate-200 bg-white">
@@ -99,14 +94,14 @@ export function SingaporeMap({
           </button>
           <button
             type="button"
-            onClick={() => setMetricMode('pm25_1h')}
+            onClick={() => setMetricMode('pm25')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-              metricMode === 'pm25_1h'
+              metricMode === 'pm25'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            1h PM2.5
+            {hasHourlyPm25 ? '1h PM2.5' : '24h PM2.5'}
           </button>
         </div>
       </div>
@@ -146,7 +141,6 @@ export function SingaporeMap({
             </marker>
           </defs>
 
-          {/* Subtle coordinate grid */}
           <rect width="740" height="410" fill="url(#sg-grid)" rx="8" />
 
           {/* Latitude / Longitude reference ticks */}
@@ -187,15 +181,11 @@ export function SingaporeMap({
             Singapore Strait
           </text>
 
-          {/* Offshore Islands: Pulau Ubin, Pulau Tekong, Jurong Island, Sentosa */}
+          {/* Offshore Islands */}
           <g fill="#E2E8F0" stroke="#CBD5E1" strokeWidth="1">
-            {/* Pulau Ubin */}
             <path d="M 526,112 L 566,102 L 602,110 L 598,124 L 552,126 L 528,122 Z" />
-            {/* Pulau Tekong */}
             <path d="M 624,114 L 664,96 L 696,114 L 692,146 L 656,154 L 628,136 Z" />
-            {/* Jurong Island */}
             <path d="M 122,314 L 188,308 L 238,324 L 222,354 L 166,356 L 128,336 Z" />
-            {/* Sentosa */}
             <path d="M 332,340 L 384,344 L 394,358 L 352,362 L 326,352 Z" />
           </g>
 
@@ -216,7 +206,8 @@ export function SingaporeMap({
           {REGION_GEOMETRIES.map((geo) => {
             const reading = snapshot.regions[geo.id];
             const psiBand = getPsiBand(reading.psi24h);
-            const pm25Band = getPm25HourlyBand(reading.pm25_1h);
+            const pm25Value = reading.pm25_1h ?? reading.pm25_24h;
+            const pm25Band = getPm25HourlyBand(pm25Value);
             const isSelected = selectedRegion === geo.id;
             const isHovered = hoveredRegion === geo.id;
 
@@ -232,7 +223,7 @@ export function SingaporeMap({
                 key={geo.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`${reading.regionName} region: 24h PSI ${reading.psi24h} (${psiBand.label}), 1h PM2.5 ${reading.pm25_1h} µg/m³`}
+                aria-label={`${reading.regionName} region: 24h PSI ${reading.psi24h} (${psiBand.label}), PM2.5 ${pm25Value} µg/m³`}
                 onClick={() => onSelectRegion(geo.id)}
                 onMouseEnter={() => setHoveredRegion(geo.id)}
                 onMouseLeave={() => setHoveredRegion(null)}
@@ -254,7 +245,6 @@ export function SingaporeMap({
                   className="transition-all duration-150"
                 />
 
-                {/* Region Telemetry Marker */}
                 <g transform={`translate(${geo.markerX}, ${geo.markerY})`}>
                   <rect
                     x="-46"
@@ -282,7 +272,7 @@ export function SingaporeMap({
                     fill={metricMode === 'psi24h' ? psiBand.dotHex : pm25Band.dotHex}
                     className="font-mono text-[17px] font-bold tabular-nums"
                   >
-                    {metricMode === 'psi24h' ? reading.psi24h : reading.pm25_1h}
+                    {metricMode === 'psi24h' ? reading.psi24h : pm25Value}
                   </text>
                   <text
                     x="0"
@@ -297,7 +287,7 @@ export function SingaporeMap({
             );
           })}
 
-          {/* Prevailing Wind Vector Compass (Top Left of Map Canvas) */}
+          {/* Compass / Prevailing Wind Vector */}
           <g transform="translate(56, 56)">
             <circle
               cx="0"
@@ -310,31 +300,55 @@ export function SingaporeMap({
             />
             <text
               x="0"
-              y="-15"
+              y="-14"
               textAnchor="middle"
-              className="fill-slate-400 font-mono text-[7px] font-semibold"
+              className="fill-slate-500 font-mono text-[8px] font-semibold"
             >
               N
             </text>
-            <g transform={`rotate(${snapshot.wind.directionDegrees})`}>
-              <line
-                x1="0"
-                y1="10"
-                x2="0"
-                y2="-10"
-                stroke="#334155"
-                strokeWidth="1.6"
-                markerEnd="url(#wind-arrow)"
-              />
-            </g>
-            <text
-              x="0"
-              y="36"
-              textAnchor="middle"
-              className="fill-slate-600 font-mono text-[9px] font-medium"
-            >
-              {snapshot.wind.directionCompass} {snapshot.wind.speedKmh}km/h
-            </text>
+            {snapshot.wind ? (
+              <>
+                <g transform={`rotate(${snapshot.wind.directionDegrees})`}>
+                  <line
+                    x1="0"
+                    y1="10"
+                    x2="0"
+                    y2="-9"
+                    stroke="#334155"
+                    strokeWidth="1.6"
+                    markerEnd="url(#wind-arrow)"
+                  />
+                </g>
+                <text
+                  x="0"
+                  y="36"
+                  textAnchor="middle"
+                  className="fill-slate-600 font-mono text-[9px] font-medium"
+                >
+                  {snapshot.wind.directionCompass} {snapshot.wind.speedKmh}km/h
+                </text>
+              </>
+            ) : (
+              <>
+                <line
+                  x1="0"
+                  y1="10"
+                  x2="0"
+                  y2="-8"
+                  stroke="#334155"
+                  strokeWidth="1.4"
+                  markerEnd="url(#wind-arrow)"
+                />
+                <text
+                  x="0"
+                  y="36"
+                  textAnchor="middle"
+                  className="fill-slate-500 font-mono text-[8.5px]"
+                >
+                  SG Grid
+                </text>
+              </>
+            )}
           </g>
         </svg>
 
@@ -347,9 +361,15 @@ export function SingaporeMap({
             <span aria-hidden="true">·</span>
             <span>{activeReading.planningAreas.slice(0, 3).join(', ')}</span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono text-slate-500 tabular-nums">
-              Visibility {snapshot.wind.visibilityKm.toFixed(1)} km
-            </span>
+            {snapshot.wind ? (
+              <span className="font-mono text-slate-500 tabular-nums">
+                Visibility {snapshot.wind.visibilityKm.toFixed(1)} km
+              </span>
+            ) : (
+              <span className="font-mono text-slate-500 tabular-nums">
+                PM2.5 {activeReading.pm25_24h} µg/m³
+              </span>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3.5 text-[11px] text-slate-600">

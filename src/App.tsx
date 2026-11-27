@@ -13,19 +13,27 @@ import { fetchSingaporePsi } from './services/psiService';
 import type { RegionId, ScenarioId, SingaporePsiSnapshot } from './types/psi';
 
 export default function App() {
-  const [scenarioId, setScenarioId] = useState<ScenarioId>('baseline');
+  const [scenarioId, setScenarioId] = useState<ScenarioId>('live');
   const [selectedRegion, setSelectedRegion] = useState<RegionId>('central');
   const [snapshot, setSnapshot] = useState<SingaporePsiSnapshot>(() =>
     createScenarioSnapshot('baseline'),
   );
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
 
   const loadSnapshot = useCallback(async (targetScenario: ScenarioId) => {
     setIsRefreshing(true);
+    setApiError(null);
     try {
       const next = await fetchSingaporePsi(targetScenario);
       setSnapshot(next);
+    } catch (err) {
+      setApiError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to reach /api/psi. Showing last available readings.',
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -58,17 +66,19 @@ export default function App() {
               <span aria-hidden="true">·</span>
               <span>5 NEA Monitoring Regions</span>
               <span aria-hidden="true">·</span>
-              <span>{snapshot.wind.monsoonPhase}</span>
-              <span aria-hidden="true">·</span>
-              <span>Front-End Preview Dataset</span>
+              <span>
+                {snapshot.sourceMode === 'live_api'
+                  ? 'Live data.gov.sg Feed'
+                  : snapshot.scenarioLabel}
+              </span>
             </div>
           </div>
 
-          {/* Scenario Preview Switcher & Manual Refresh */}
+          {/* Data Source / Drill Switcher & Manual Refresh */}
           <div className="flex flex-wrap items-center gap-2.5">
             <div
               role="group"
-              aria-label="Haze scenario preview"
+              aria-label="Data source and haze drill selector"
               className="flex flex-wrap items-center gap-1 rounded-lg bg-slate-200/70 p-1"
             >
               {SCENARIO_OPTIONS.map((option) => {
@@ -106,6 +116,25 @@ export default function App() {
           </div>
         </section>
 
+        {apiError && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-900"
+          >
+            <span>
+              <span className="font-semibold">Live API Notice: </span>
+              {apiError}
+            </span>
+            <button
+              type="button"
+              onClick={() => void loadSnapshot(scenarioId)}
+              className="rounded-md border border-amber-300 bg-white px-3 py-1 font-medium text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
+            >
+              Retry Live Fetch
+            </button>
+          </div>
+        )}
+
         {/* Full-Width 6-Column Islandwide & Regional KPI Strip */}
         <NationalSummaryStrip
           snapshot={snapshot}
@@ -130,8 +159,8 @@ export default function App() {
             <div className="w-full flex flex-col">
               <RegionInspector
                 reading={activeRegionReading}
-                monsoonPhase={snapshot.wind.monsoonPhase}
-                visibilityKm={snapshot.wind.visibilityKm}
+                monsoonPhase={snapshot.wind?.monsoonPhase ?? null}
+                visibilityKm={snapshot.wind?.visibilityKm ?? null}
               />
             </div>
           </div>
@@ -159,13 +188,13 @@ export default function App() {
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-4 px-4 py-5 text-xs text-slate-500 sm:px-6 lg:px-8">
           <span>SG Haze Watch — Singapore Regional PSI &amp; PM2.5 Monitor</span>
           <div className="flex items-center gap-4">
-            <span>Aligned with NEA 24-hr PSI &amp; 1-hr PM2.5 bands</span>
+            <span>Live NEA data via data.gov.sg</span>
             <button
               type="button"
               onClick={() => setIsApiModalOpen(true)}
               className="font-medium text-slate-700 hover:text-slate-900 underline underline-offset-4 cursor-pointer"
             >
-              API Integration Guide
+              API Status
             </button>
           </div>
         </div>

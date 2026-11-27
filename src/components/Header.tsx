@@ -52,7 +52,7 @@ export function Header({ onOpenApiModal }: HeaderProps) {
             onClick={onOpenApiModal}
             className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 active:bg-slate-950 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            API Hookup
+            API Status
           </button>
         </div>
       </div>
