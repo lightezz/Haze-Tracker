@@ -1,4 +1,13 @@
-import type { ServerlessRequest, ServerlessResponse } from './health.ts';
+interface ServerlessRequest {
+  method?: string;
+  query?: Record<string, unknown>;
+}
+
+interface ServerlessResponse {
+  status: (code: number) => ServerlessResponse;
+  setHeader: (name: string, value: string) => void;
+  json: (body: unknown) => void;
+}
 
 const DATA_GOV_SG_PSI_URL = 'https://api-open.data.gov.sg/v2/real-time/api/psi';
 const DATE_PARAM_REGEX = /^\d{4}-\d{2}-\d{2}$/;
